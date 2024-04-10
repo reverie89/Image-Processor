@@ -40,7 +40,9 @@ def save_image(img, format, quality, width):
         img = resize_image(img, width)
     if format.lower() in {'jpg', 'jpeg'} and img.mode == 'RGBA':
         img = img.convert('RGB')
-    img.save(output, format=format, quality=quality)
+    if img.format == 'WEBP' and format.lower() == 'gif':
+        img.info.pop('background', None)
+    img.save(output, format=format, quality=quality, save_all=True)
     output.seek(0)
     return output
 
