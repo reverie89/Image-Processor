@@ -22,12 +22,20 @@ jobs:
           version: "lab:latest"
           driver: cloud
           endpoint: "reverie89/cloudbuilder-1"
-      - name: Build and push
+      - name: Build and push arm64
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/image-processor:latest
+      - name: Build and push amd64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/image-processor:latest
   
