@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['FONT_FOLDER'] = 'usr_fonts'
 app.secret_key = 'your_secret_key'
-
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('UPLOAD_LIMIT', 500)) * 1024 * 1024 # set file upload limit (*.MB)
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'gif', 'png', 'webp', 'zip'}
 ALLOWED_EXTENSIONS_WATERMARK = {'jpg', 'jpeg', 'gif', 'png', 'webp'}
 DEFAULT_FONT = 'static/fonts/Roboto-Regular.ttf'
@@ -29,15 +29,19 @@ def delete_file(file_path):
 def sanitize_input(input_str):
     return escape(input_str)
 
-def resize_image(image, width):
+def resize_image(image, width, height):
     aspect_ratio = float(image.height) / float(image.width)
-    new_height = int(width * aspect_ratio)
-    return image.resize((width, new_height))
+    if image.width > width:
+        new_height = int(width * aspect_ratio)
+        image = image.resize((width, new_height))
+    if image.height > height:
+        new_width = int(height / aspect_ratio)
+        image = image.resize((new_width, height))
+    return image
 
-def save_image(img, format, quality, width):
+def save_image(img, format, quality, width, height):
     output = io.BytesIO()
-    if img.width > width:
-        img = resize_image(img, width)
+    img = resize_image(img, width, height)
     if format.lower() in {'jpg', 'jpeg'} and img.mode == 'RGBA':
         img = img.convert('RGB')
     if img.format == 'WEBP' and format.lower() == 'gif':
@@ -46,11 +50,11 @@ def save_image(img, format, quality, width):
     output.seek(0)
     return output
 
-def process_image(file, format, quality, width, watermark=None, opacity=50, position=(0, 0), text_watermark="", text_watermark_color="#ffffff", font_path=DEFAULT_FONT, font_size=36):
-    def process_single_image(img, format, quality, width, watermark=None, opacity=50, position=position, text_watermark=text_watermark, text_watermark_color=text_watermark_color, font_path=font_path, font_size=font_size):
+def process_image(file, format, quality, width, height, watermark=None, opacity=50, position=(0, 0), text_watermark="", text_watermark_color="#ffffff", font_path=DEFAULT_FONT, font_size=36):
+    def process_single_image(img, format, quality, width, height, watermark=None, opacity=50, position=position, text_watermark=text_watermark, text_watermark_color=text_watermark_color, font_path=font_path, font_size=font_size):
         if watermark:
             watermark_image = Image.open(watermark)
-            watermark_image = resize_image(watermark_image, int(img.width * 0.2))
+            watermark_image = resize_image(watermark_image, int(img.width * 0.2), watermark_image.height)
             watermark_image = watermark_image.convert('RGBA')
             alpha = int(255 * (opacity / 100))
             watermark_image.putalpha(alpha)
@@ -59,7 +63,7 @@ def process_image(file, format, quality, width, watermark=None, opacity=50, posi
             draw = ImageDraw.Draw(img)
             font = ImageFont.truetype(font_path, font_size)
             draw.text(position, text_watermark, fill=text_watermark_color, font=font)
-        output = save_image(img, format, quality, width)
+        output = save_image(img, format, quality, width, height)
         print(position)
         return output
 
@@ -75,7 +79,7 @@ def process_image(file, format, quality, width, watermark=None, opacity=50, posi
         zip_output = io.BytesIO()
         with zipfile.ZipFile(zip_output, 'w') as output_zip_file:
             for filename, img in processed_images:
-                output = process_single_image(img, format, quality, width, watermark, opacity)
+                output = process_single_image(img, format, quality, width, height, watermark, opacity)
                 output_filename = f"{os.path.splitext(filename)[0]}.{format.lower()}"
                 output_zip_file.writestr(output_filename, output.getvalue())
 
@@ -83,7 +87,7 @@ def process_image(file, format, quality, width, watermark=None, opacity=50, posi
         return zip_output
     else:
         img = Image.open(io.BytesIO(file.read()))
-        output = process_single_image(img, format, quality, width, watermark, opacity)
+        output = process_single_image(img, format, quality, width, height, watermark, opacity)
         output.seek(0)
         return output
 
@@ -91,12 +95,11 @@ def process_image(file, format, quality, width, watermark=None, opacity=50, posi
 def index():
     font_files = [os.path.basename(f) for f in FONTS]
     if request.method == 'POST':
-        print(request.files)
         file = request.files['file-input']
         format = sanitize_input(request.form['format'])
         quality = int(sanitize_input(request.form['quality']))
         width = int(sanitize_input(request.form['width']))
-        
+        height = int(sanitize_input(request.form['height']))
         if file and allowed_file(file.filename, ALLOWED_EXTENSIONS):
             filename = secure_filename(file.filename)
             watermark = None
@@ -124,7 +127,7 @@ def index():
                     watermark_file.save(watermark_path)
                     watermark = watermark_path
                 
-            processed_file = process_image(file, format, quality, width, watermark=watermark, opacity=opacity, position=position, text_watermark=text_watermark, text_watermark_color=text_watermark_color, font_path=font_path, font_size=font_size)
+            processed_file = process_image(file, format, quality, width, height, watermark=watermark, opacity=opacity, position=position, text_watermark=text_watermark, text_watermark_color=text_watermark_color, font_path=font_path, font_size=font_size)
             
             if filename.endswith('.zip'):
                 response = send_file(processed_file, mimetype='application/zip', as_attachment=True, download_name=os.path.splitext(filename)[0] + '.zip')

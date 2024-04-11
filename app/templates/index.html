@@ -81,12 +81,15 @@
                     <div class="file-name" id="fileNames"></div>
                     <input type="file" id="fileInput" name="file-input" accept=".zip, .jpg, .jpeg, .gif, .png, .webp" style="display: none;">
                 </div>
-                
                 <div class="form-group">
-                    <label for="width">Width: (resizing will occur if input image's width exceeds this value)</label>
+                    <label for="width">Max Width: (resizing will occur if input image's width exceeds this value)</label>
                     <input type="number" class="form-control" id="width" name="width" min="1" value="1600">
                 </div>
-
+                <div class="form-group">
+                    <label for="width">Max Height: (resizing will occur if input image's height exceeds this value)</label>
+                    <input type="number" class="form-control" id="height" name="height" min="1" value="900">
+                </div>
+                <label>* It will resize to the smaller of the max input values keeping the aspect ratio</label>
                 <div class="form-group">
                     <div class="form-check">
                         <input class="form-check-input watermark-type" type="radio" name="watermark-type" id="no-watermark" value="none" checked>
