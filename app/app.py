@@ -10,7 +10,8 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['FONT_FOLDER'] = 'usr_fonts'
 app.secret_key = 'your_secret_key'
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('UPLOAD_LIMIT', 500)) * 1024 * 1024 # set file upload limit (*.MB)
+if os.getenv('UPLOAD_LIMIT') is not None:
+    app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('UPLOAD_LIMIT') * 1024 * 1024) # set file upload limit (*.MB)
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'gif', 'png', 'webp', 'zip'}
 ALLOWED_EXTENSIONS_WATERMARK = {'jpg', 'jpeg', 'gif', 'png', 'webp'}
 DEFAULT_FONT = 'static/fonts/Roboto-Regular.ttf'
@@ -46,7 +47,10 @@ def save_image(img, format, quality, width, height):
         img = img.convert('RGB')
     if img.format == 'WEBP' and format.lower() == 'gif':
         img.info.pop('background', None)
-    img.save(output, format=format, quality=quality, save_all=True)
+    img.save(output,
+             format='jpeg' if format.lower() in {'jpg', 'jpeg'} else None,
+             quality=quality,
+             save_all=False if format.lower() in {'jpg', 'jpeg'} else True)
     output.seek(0)
     return output
 

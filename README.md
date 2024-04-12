@@ -16,7 +16,7 @@ Coded with ChatGPT
 
 - Watermark with user supplied image or text with user supplied font file (.ttf)
 
-- Set ENV VAR `UPLOAD_LIMIT` to limit file size upload in MB. Default if unset: 500MB
+- Set ENV VAR `UPLOAD_LIMIT` to limit file size upload in MB (numbers only). No limit if not set
 
 ## How to use
 
