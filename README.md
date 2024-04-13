@@ -6,7 +6,7 @@ Coded with ChatGPT
 
 ## Features:
 
-- Upload single image or zip file of images for batch conversion.
+- Upload single image or zip file of images for batch conversion. Now with recursive support!
 
 - Convert jpg, png, gif, webp images. Animated gif/webp supported.
 

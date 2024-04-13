@@ -11,34 +11,6 @@
             color: #fff;
         }
 
-            .tooltip {
-        position: relative;
-        display: inline-block;
-        cursor: pointer;
-    }
-
-    .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 120px;
-        background-color: #555;
-        color: #fff;
-        text-align: center;
-        border-radius: 6px;
-        padding: 5px;
-        position: absolute;
-        z-index: 1;
-        bottom: 125%;
-        left: 50%;
-        margin-left: -60px;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-
-    .tooltip:hover .tooltiptext {
-        visibility: visible;
-        opacity: 1;
-    }
-
         .drop-area {
             border: 2px dashed #ccc;
             border-radius: 5px;
@@ -54,6 +26,7 @@
 
         .file-name {
             margin-top: 10px;
+            color: #e6d266;
         }
     </style>
 </head>
@@ -76,10 +49,10 @@
             {% endwith %}
             <form id="image-form" method="post" enctype="multipart/form-data">
                 <div class="drop-area" id="fileDropArea">
-                    <p>Click or drag files here to upload for "file-input"</p>
+                    <p>Click or drag files here to upload</p>
                     <p>Accepted file formats: .zip, .jpg, .jpeg, .gif, .png, .webp</p>
                     <div class="file-name" id="fileNames"></div>
-                    <input type="file" id="fileInput" name="file-input" accept=".zip, .jpg, .jpeg, .gif, .png, .webp" style="display: none;">
+                    <input type="file" multiple id="fileInput" name="file-input" accept=".zip, .jpg, .jpeg, .gif, .png, .webp" style="display: none;">
                 </div>
                 <div class="form-group">
                     <label for="width">Max Width: (resizing will occur if input image's width exceeds this value)</label>
@@ -112,7 +85,8 @@
                 </div>
 
                 <div class="drop-area" id="imageDropArea" style="display: none;">
-                    <p>Click or drag an image here to upload for "watermark-image"</p>
+                    <p>Click or drag a watermark image here</p>
+                    <p>Accepted file formats: .jpg, .jpeg, .gif, .png, .webp</p>
                     <div class="file-name" id="imageFileName"></div>
                     <input type="file" id="imageInput" name="watermark-image" accept=".jpg, .jpeg, .gif, .png, .webp" style="display: none;">
                 </div>
@@ -143,7 +117,8 @@
                 </div>
                 
                 <div class="drop-area" id="fontDropArea" style="display: none;">
-                    <p>Click or drag a font file here to upload for "watermark-font"</p>
+                    <p>Click or drag a font file here to upload</p>
+                    <p>Accepted file formats: .ttf</p>
                     <div class="file-name" id="fontFileName"></div>
                     <input type="file" id="fontInput" name="watermark-font" accept=".ttf" style="display: none;">
                 </div>
@@ -332,6 +307,7 @@
             var watermarkPositionX = document.getElementById('watermark-position-x');
             var watermarkPositionY = document.getElementById('watermark-position-y');
             var textWatermarkInput = document.getElementById('text-watermark-input');
+            var fontSelectOption = document.getElementById('font-select-option');
             var fontSelect = document.getElementById('font-select');
             var fontSize = document.getElementById('text-watermark-font-size');
             var fontColor = document.getElementById('text-watermark-font-color');
@@ -346,6 +322,11 @@
                 fontSelect.style.display = 'block';
                 fontSize.style.display = 'block';
                 fontColor.style.display = 'block';
+                if (fontSelectOption.value === 'upload') {
+                    fontDropArea.style.display = 'block';
+                } else {
+                    fontDropArea.style.display = 'none';
+                }
             } else if (watermarkType === 'image') {
                 uploadWatermarkArea.style.display = 'block';
                 watermarkOpacity.style.display = 'block';
@@ -355,6 +336,7 @@
                 fontSelect.style.display = 'none';
                 fontSize.style.display = 'none';
                 fontColor.style.display = 'none';
+                fontDropArea.style.display = 'none';
             } else {
                 uploadWatermarkArea.style.display = 'none';
                 watermarkOpacity.style.display = 'none';
@@ -364,7 +346,7 @@
                 fontSelect.style.display = 'none';
                 fontSize.style.display = 'none';
                 fontColor.style.display = 'none';
-                
+                fontDropArea.style.display = 'none';
             }
         });
     });
