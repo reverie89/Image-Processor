@@ -153,9 +153,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 text_watermark_color=text_watermark_color,
                                 font_path=font_path,
                                 font_size=font_size)
-                            output_filename = f'{os.path.splitext(obj_filename)[0]}.{format}'
-                            if format in os.path.splitext(obj_filename)[1]:
-                                output_filename = f'{obj_filename}.{format}'
+                            output_filename = f'{obj_filename}.{format}'
                             output_zipf.writestr(output_filename, output.getvalue())
                     output_zip.seek(0)
                 except Exception as e:
