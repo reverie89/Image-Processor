@@ -39,17 +39,63 @@ def sanitize_input(input_str):
     return escape(input_str)
 
 def resize_image(image, width, height):
-    aspect_ratio = float(image.height) / float(image.width)
-    if image.width > width:
-        new_height = int(width * aspect_ratio)
-        image = image.resize((width, new_height))
-    if image.height > height:
-        new_width = int(height / aspect_ratio)
-        image = image.resize((new_width, height))
-    return image
+    aspect_ratio = image.height / image.width
+    output = io.BytesIO()
+    
+    if image.width > width or image.height > height:
+        # Calculate new dimensions while preserving aspect ratio
+        if width / aspect_ratio > height:
+            new_width = int(height / aspect_ratio)
+            new_height = height
+        else:
+            new_width = width
+            new_height = int(width * aspect_ratio)
+        
+        # Resize the image while preserving transparency
+        if image.format == 'GIF':
+            resized_frames = process_gif_frames(image, new_width, new_height)
+            resized_frames[0].save(
+                output,
+                format="PNG",
+                save_all=True,
+                append_images=resized_frames[1:],
+                loop=0
+            )
+        else:
+            resized_image = image.resize((new_width, new_height))
+            resized_image.save(output, format="PNG")
+    else:
+        if image.format == 'GIF':
+            resized_frames = process_gif_frames(image, image.width, image.height)
+            resized_frames[0].save(
+                output,
+                format="PNG",
+                save_all=True, 
+                append_images=resized_frames[1:],
+                loop=0
+            )
+        else:
+            image.save(output, format="PNG")
+
+    output.seek(0)
+    return Image.open(output)
+
+def process_gif_frames(image, width, height):
+    frames = []
+    try:
+        while True:
+            frame = image.convert("RGBA")
+            frame = frame.resize((width, height))
+            frames.append(frame.copy())
+            image.seek(image.tell() + 1)
+    except EOFError:
+        pass  # Reached the end of the GIF
+    return frames
 
 def save_image(img, format, quality, width, height):
     output = io.BytesIO()
+    if img.format != 'gif':
+        img.convert('RGBA')
     img = resize_image(img, width, height)
     if format in {'jpg', 'jpeg'} and img.mode == 'RGBA':
         img = img.convert('RGB')
@@ -65,9 +111,8 @@ def save_image(img, format, quality, width, height):
 def process_input(input_file, format, quality, width, height, watermark, opacity, position, text_watermark, text_watermark_color, font_path, font_size):
     
     def process_image(img, format, quality, width, height, watermark, opacity, position, text_watermark, text_watermark_color, font_path, font_size):
-        # for name, value in locals().items():
-        #     print(f'{name}: {value}')
-        if watermark is not None:
+        # Function to add watermark image
+        def add_image_watermark(img, watermark, opacity, position):
             try:
                 watermark_image = Image.open(watermark)
                 watermark_image = resize_image(watermark_image, int(img.width * 0.2), watermark_image.height)
@@ -77,14 +122,56 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 img.paste(watermark_image, position, watermark_image)
             except Exception as e:
                 error_messages.append(e)
-        if text_watermark:
-            draw = ImageDraw.Draw(img)
+
+        # Function to add text watermark
+        def add_text_watermark(img, wtext, wtext_color, wrotation, opacity, position, font_path, font_size, wbgcolor=None):
+            for name, value in locals().items():
+                print(f'{name}: {value}')
             try:
                 font = ImageFont.truetype(font_path, font_size)
+                w_left, w_top, w_right, w_bottom = font.getbbox(wtext)
+                wtext_w, wtext_h = w_right - w_left, (w_bottom - w_top)*2
             except Exception as e:
-                print(f'Error loading font: {e}')
+                print(e)
+                error_messages.append(f'Error loading font: {e}')
+            try:
+                if wbgcolor is None:
+                    text_img = Image.new('RGBA', (wtext_w, wtext_h))
+                else:
+                    text_img = Image.new('RGBA', (wtext_w, wtext_h), wbgcolor)
+                text_draw = ImageDraw.Draw(text_img)
+                text_draw.text(xy=(0, 0), text=wtext, fill=wtext_color, font=font)
+                text_img = resize_image(text_img, int(img.width * 0.2), text_img.height)
+                # if you want to add opacity to the watermark text image background...opacity = 100 = no transparency
+                # alpha = int(255 * (opacity / 100))
+                # text_img.putalpha(alpha)
+                rotated_text_img = text_img.rotate(wrotation, expand=True, fillcolor=None)
+                img.paste(rotated_text_img, position, rotated_text_img)
+            except Exception as e:
                 error_messages.append(e)
-            draw.text(position, text_watermark, fill=text_watermark_color, font=font)
+
+        # Add watermark if specified
+        if watermark:
+            print('watermark image')
+            add_image_watermark(
+                img=img,
+                watermark=watermark,
+                opacity=opacity,
+                position=position)
+
+        # Add text watermark if specified
+        if text_watermark:
+            print('watermark text')
+            add_text_watermark(
+                img=img,
+                wtext=text_watermark,
+                wtext_color=text_watermark_color,
+                wrotation=45,
+                opacity=opacity,
+                position=position,
+                font_path=font_path,
+                font_size=font_size)
+            
         output = save_image(img, format, quality, width, height)
         return output
     
@@ -137,8 +224,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 text_watermark_color=text_watermark_color,
                                 font_path=font_path,
                                 font_size=font_size)
-                            output_filename = obj_filename
-                            output_zipf.writestr(output_filename, output.getvalue())
+                            output_zipf.writestr(obj_filename, output.getvalue())
                         else:
                             output = process_image(
                                 img=obj,
@@ -153,8 +239,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 text_watermark_color=text_watermark_color,
                                 font_path=font_path,
                                 font_size=font_size)
-                            output_filename = f'{obj_filename}.{format}'
-                            output_zipf.writestr(output_filename, output.getvalue())
+                            output_zipf.writestr(f'{obj_filename}.{format}', output.getvalue())
                     output_zip.seek(0)
                 except Exception as e:
                     error_messages.append(f'Error processing images: {e}')
@@ -216,7 +301,7 @@ def index():
             error_messages.append(f'File input error: {e}')
         
         format = sanitize_input(request.form['format']).lower() if request.form['format'] else 'webp'
-        quality = max(int(sanitize_input(request.form['quality'])), 100) if request.form['quality'] else 100
+        quality = min(int(sanitize_input(request.form['quality'])), 100) if request.form['quality'] else 100
         width = int(sanitize_input(request.form['width'])) if request.form['width'] else 1600
         height = int(sanitize_input(request.form['height'])) if request.form['height'] else 900
         # watermarking
