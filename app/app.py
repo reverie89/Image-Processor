@@ -39,15 +39,19 @@ def sanitize_input(input_str):
     return escape(input_str)
 
 def resize_image(image, width, height):
+    print((image.width, image.height))
     aspect_ratio = image.height / image.width
     output = io.BytesIO()
+    new_width = image.width
+    new_height = image.height
     if image.width > width:
         new_width = width
         new_height = int(width * aspect_ratio)
-    if image.height > height:
+    elif image.height > height:
         new_width = int(height / aspect_ratio)
         new_height = height
-        # Resize the image while preserving transparency
+        
+    print(f'{(new_width, new_height)}')
     if image.format == 'GIF':
         resized_frames = process_gif_frames(image, new_width, new_height)
         resized_frames[0].save(
@@ -57,21 +61,10 @@ def resize_image(image, width, height):
             append_images=resized_frames[1:],
             loop=0
         )
-    else:
-        resized_image = image.resize((new_width, new_height))
-        resized_image.save(output, format="PNG")
+    
+    resized_image = image.resize((new_width, new_height))
+    resized_image.save(output, format="PNG")
 
-    if image.format == 'GIF':
-        resized_frames = process_gif_frames(image, image.width, image.height)
-        resized_frames[0].save(
-            output,
-            format="PNG",
-            save_all=True, 
-            append_images=resized_frames[1:],
-            loop=0
-        )
-    else:
-        image.save(output, format="PNG")
 
     output.seek(0)
     return Image.open(output)
