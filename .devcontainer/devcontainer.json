@@ -1,6 +1,6 @@
 // Update the VARIANT arg in docker-compose.yml to pick a Python version
 {
-	"name": "image-processor",
+	"name": "Image Processor",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
 	"workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
@@ -30,7 +30,7 @@
 	// This can be used to network with other containers or the host.
 	// "forwardPorts": [80, 5000],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postStartCommand": "flask run -p 5000 --debug'",
+	"postStartCommand": "cd app && flask run -p 5000 --debug",
 	//"postStartCommand": "gunicorn -b 0.0.0.0:5000 -w 4 run:app",
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	// "remoteUser": "vscode",

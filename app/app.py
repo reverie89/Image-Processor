@@ -1,3 +1,4 @@
+import traceback
 import os
 import io
 import sys
@@ -79,7 +80,8 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
         elif image.height > height:
             new_width = int(height / aspect_ratio)
             new_height = height
-        if image.format.upper() == 'GIF':
+
+        if image.format == 'GIF':
             resized_frames = process_gif_frames(image, new_width, new_height)
             resized_frames[0].save(
                 output,
@@ -97,11 +99,11 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
 
     def save_image(img, format, quality, width, height):
         output = io.BytesIO()
-        if img.format.upper() != 'GIF':
+        if img.format != 'gif':
             img.convert('RGBA')
         if format in {'jpg', 'jpeg'} and img.mode == 'RGBA':
             img = img.convert('RGB')
-        if img.format.upper() == 'WEBP' and format == 'gif':
+        if img.format == 'WEBP' and format == 'gif':
             img.info.pop('background', None)
         img.save(output,
                  format='jpeg' if format in {'jpg', 'jpeg'} else format,
@@ -116,13 +118,13 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
             try:
                 watermark_image = Image.open(watermark)
                 watermark_image = resize_image(watermark_image, int(
-                    img.width * 0.2 * w_size/100), int(watermark_image.height * w_size/100))
+                    img.width * 0.2) * w_size, watermark_image.height * w_size)
                 watermark_image = watermark_image.convert('RGBA')
                 alpha = int(255 * (opacity_bg / 100))
                 watermark_image.putalpha(alpha)
                 rotated_img = watermark_image.rotate(
                     w_rotation, expand=True, fillcolor=None)
-                if img.format.upper() == 'GIF':
+                if img.format == 'GIF':
                     output = io.BytesIO()
                     resized_frames = process_gif_frames(
                         image=img,
@@ -139,10 +141,9 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                     output.seek(0)
                     return Image.open(output)
                 else:
-                    img.paste(rotated_img, position, rotated_img)
-                    return img
+                    return img.paste(rotated_img, position, rotated_img)
             except Exception as e:
-                print(e)
+                print(traceback.format_exc())
                 error_messages.append(e)
 
         # Function to add text watermark
@@ -157,7 +158,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 w_left, w_top, w_right, w_bottom = font.getbbox(wtext)
                 wtext_w, wtext_h = w_right - w_left, (w_bottom - w_top)*2
             except Exception as e:
-                print(e)
+                print(traceback.format_exc())
                 error_messages.append(f'Error loading font: {e}')
             try:
                 if wbgcolor is None:
@@ -176,7 +177,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 # text_img.putalpha(alpha)
                 rotated_text_img = text_img.rotate(
                     w_rotation, expand=True, fillcolor=None)
-                if img.format.upper() == 'GIF':
+                if img.format == 'GIF':
                     output = io.BytesIO()
                     resized_frames = process_gif_frames(
                         image=img,
@@ -193,9 +194,10 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                     output.seek(0)
                     return Image.open(output)
                 else:
-                    return img.paste(rotated_text_img, position, rotated_text_img)
+                    img.paste(rotated_text_img, position, rotated_text_img)
+                    return img
             except Exception as e:
-                print(e)
+                print(traceback.format_exc())
                 error_messages.append(e)
 
         # Add watermark if specified
@@ -387,8 +389,7 @@ def index():
         position = (int(sanitize_input(request.form['watermark-position-x'])), int(sanitize_input(
             request.form['watermark-position-y']))) if request.form['watermark-position-x'] and request.form['watermark-position-y'] else (0, 0)
         w_rotation = int(sanitize_input(request.form['watermark-rotation']))
-        w_size = float(sanitize_input(
-            request.form['watermark-size'])) if request.form['watermark-size'] else 50
+        w_size = None
         # if watermarking type is text
         text_watermark = sanitize_input(
             request.form['text-watermark']) if request.form['text-watermark'] else ""
@@ -419,7 +420,7 @@ def index():
             else:
                 font_path = FONTS[font_files.index(selected_font)]
             w_size = int(sanitize_input(
-                request.form['text-watermark-font-size'])) if request.form['text-watermark-font-size'] else 36
+                request.form['watermark-size'])) if request.form['watermark-size'] else 50
         else:
             # save the watermark image
             watermark_path = None
@@ -484,7 +485,7 @@ def index():
                                  as_attachment=True,
                                  download_name=processed_files[0][0])
         except Exception as e:
-            print(e)
+            print(traceback.format_exc())
             error_messages.append(f'Error: {e}')
             for messages in error_messages:
                 flash(f'{messages}', 'error')
