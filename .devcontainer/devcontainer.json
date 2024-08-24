@@ -1,0 +1,42 @@
+// Update the VARIANT arg in docker-compose.yml to pick a Python version
+{
+	"name": "image-processor",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			// "settings": { 
+			// 	"python.defaultInterpreterPath": "/usr/local/bin/python",
+			// 	"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
+			// 	"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+			// 	"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
+			// 	"python.testing.pytestPath": "/usr/local/py-utils/bin/pytest"
+			// },
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.python",
+				"eamodio.gitlens",
+				"esbenp.prettier-vscode",
+				// "ms-python.pylint",
+				// "ms-python.vscode-pylance"
+			]
+		}
+	},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// This can be used to network with other containers or the host.
+	// "forwardPorts": [80, 5000],
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postStartCommand": "flask run -p 5000 --debug'",
+	//"postStartCommand": "gunicorn -b 0.0.0.0:5000 -w 4 run:app",
+	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	// "remoteUser": "vscode",
+	"portsAttributes": {
+		"5000": {
+			"label": "Flask"
+		}
+	}
+}

@@ -1,10 +1,11 @@
+import os
+import io
+import sys
+import zipfile
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 from markupsafe import escape
 from PIL import Image, ImageDraw, ImageFont
-import os
-import zipfile
-import io
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -27,89 +28,110 @@ def allowed_file(filename, allowed_extensions):
     try:
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
     except:
+        print(f'File type not accepted. Must be {", ".join(allowed_extensions)}')
         error_messages.append(f'File type not accepted. Must be {", ".join(allowed_extensions)}')
 
 def delete_file(file_path):
     try:
         os.remove(file_path)
     except OSError as e:
+        print(f'Error deleting file: {e.filename} - {e.strerror}')
         error_messages.append(f'Error deleting file: {e.filename} - {e.strerror}')
         
 def sanitize_input(input_str):
     return escape(input_str)
 
-def resize_image(image, width, height):
-    print((image.width, image.height))
-    aspect_ratio = image.height / image.width
-    output = io.BytesIO()
-    new_width = image.width
-    new_height = image.height
-    if image.width > width:
-        new_width = width
-        new_height = int(width * aspect_ratio)
-    elif image.height > height:
-        new_width = int(height / aspect_ratio)
-        new_height = height
-        
-    print(f'{(new_width, new_height)}')
-    if image.format == 'GIF':
-        resized_frames = process_gif_frames(image, new_width, new_height)
-        resized_frames[0].save(
-            output,
-            format="PNG",
-            save_all=True,
-            append_images=resized_frames[1:],
-            loop=0
-        )
-    
-    resized_image = image.resize((new_width, new_height))
-    resized_image.save(output, format="PNG")
-
-
-    output.seek(0)
-    return Image.open(output)
-
-def process_gif_frames(image, width, height):
-    frames = []
-    try:
-        while True:
-            frame = image.convert("RGBA")
-            frame = frame.resize((width, height))
-            frames.append(frame.copy())
-            image.seek(image.tell() + 1)
-    except EOFError:
-        pass  # Reached the end of the GIF
-    return frames
-
-def save_image(img, format, quality, width, height):
-    output = io.BytesIO()
-    if img.format != 'gif':
-        img.convert('RGBA')
-    img = resize_image(img, width, height)
-    if format in {'jpg', 'jpeg'} and img.mode == 'RGBA':
-        img = img.convert('RGB')
-    if img.format == 'WEBP' and format == 'gif':
-        img.info.pop('background', None)
-    img.save(output,
-             format='jpeg' if format in {'jpg', 'jpeg'} else format,
-             quality=quality,
-             save_all=False if format in {'jpg', 'jpeg'} else True)
-    output.seek(0)
-    return output
 
 def process_input(input_file, format, quality, width, height, watermark, opacity, position, text_watermark, text_watermark_color, font_path, font_size):
+ 
+    def process_gif_frames(image, width, height, wmark=None):
+        frames = []
+        try:
+            while True:
+                frame = image.convert("RGBA")
+                frame = frame.resize((width, height))
+                #watermark
+                if wmark is not None:
+                    frame.paste(wmark, position, wmark)
+                frames.append(frame.copy())
+                image.seek(image.tell() + 1)
+        except EOFError:
+            pass  # Reached the end of the GIF
+        return frames
+
+    def resize_image(image, width, height):
+        aspect_ratio = image.height / image.width
+        output = io.BytesIO()
+        new_width = image.width
+        new_height = image.height
+        if image.width > width:
+            new_width = width
+            new_height = int(width * aspect_ratio)
+        elif image.height > height:
+            new_width = int(height / aspect_ratio)
+            new_height = height
+        
+        if image.format == 'GIF':
+            resized_frames = process_gif_frames(image, new_width, new_height)
+            resized_frames[0].save(
+                output,
+                format="PNG",
+                save_all=True,
+                append_images=resized_frames[1:],
+                loop=0
+            )
+        else:
+            resized_image = image.resize((new_width, new_height))
+            resized_image.save(output, format="PNG")
+
+        output.seek(0)
+        return Image.open(output)
     
+    def save_image(img, format, quality, width, height):
+        output = io.BytesIO()
+        if img.format != 'gif':
+            img.convert('RGBA')
+        if format in {'jpg', 'jpeg'} and img.mode == 'RGBA':
+            img = img.convert('RGB')
+        if img.format == 'WEBP' and format == 'gif':
+            img.info.pop('background', None)
+        img.save(output,
+                format='jpeg' if format in {'jpg', 'jpeg'} else format,
+                quality=quality,
+                save_all=False if format in {'jpg', 'jpeg'} else True)
+        output.seek(0)
+        return output
+
     def process_image(img, format, quality, width, height, watermark, opacity, position, text_watermark, text_watermark_color, font_path, font_size):
         # Function to add watermark image
-        def add_image_watermark(img, watermark, opacity, position):
+        def add_image_watermark(img, watermark, wrotation, opacity, position):
             try:
                 watermark_image = Image.open(watermark)
                 watermark_image = resize_image(watermark_image, int(img.width * 0.2), watermark_image.height)
                 watermark_image = watermark_image.convert('RGBA')
                 alpha = int(255 * (opacity / 100))
                 watermark_image.putalpha(alpha)
-                img.paste(watermark_image, position, watermark_image)
+                rotated_img = watermark_image.rotate(wrotation, expand=True, fillcolor=None)
+                if img.format == 'GIF':
+                    output = io.BytesIO()
+                    resized_frames = process_gif_frames(
+                        image=img,
+                        width=img.width,
+                        height=img.height,
+                        wmark=rotated_img)
+                    resized_frames[0].save(
+                        output,
+                        format="PNG",
+                        save_all=True,
+                        append_images=resized_frames[1:],
+                        loop=0
+                        )
+                    output.seek(0)
+                    return Image.open(output)
+                else:
+                    return img.paste(rotated_img, position, rotated_img)
             except Exception as e:
+                print(e)
                 error_messages.append(e)
 
         # Function to add text watermark
@@ -135,23 +157,42 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 # alpha = int(255 * (opacity / 100))
                 # text_img.putalpha(alpha)
                 rotated_text_img = text_img.rotate(wrotation, expand=True, fillcolor=None)
-                img.paste(rotated_text_img, position, rotated_text_img)
+                if img.format == 'GIF':
+                    output = io.BytesIO()
+                    resized_frames = process_gif_frames(
+                        image=img,
+                        width=img.width,
+                        height=img.height,
+                        wmark=rotated_text_img)
+                    resized_frames[0].save(
+                        output,
+                        format="PNG",
+                        save_all=True,
+                        append_images=resized_frames[1:],
+                        loop=0
+                        )
+                    output.seek(0)
+                    return Image.open(output)
+                else:
+                    return img.paste(rotated_text_img, position, rotated_text_img)
             except Exception as e:
+                print(e)
                 error_messages.append(e)
 
         # Add watermark if specified
         if watermark:
             print('watermark image')
-            add_image_watermark(
+            img = add_image_watermark(
                 img=img,
                 watermark=watermark,
+                wrotation=45,
                 opacity=opacity,
                 position=position)
 
         # Add text watermark if specified
         if text_watermark:
             print('watermark text')
-            add_text_watermark(
+            img = add_text_watermark(
                 img=img,
                 wtext=text_watermark,
                 wtext_color=text_watermark_color,
@@ -160,24 +201,26 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 position=position,
                 font_path=font_path,
                 font_size=font_size)
-            
+        
         output = save_image(img, format, quality, width, height)
         return output
     
-    def ext_zip2mem(zip_file):
-        try:
-            # Create an in-memory binary stream to hold the file's data
-            file_data = io.BytesIO()
-            # Read the contents of the ZipExtFile object into memory
-            file_data.write(zip_file.read())
-            # Reset the stream position to the beginning
-            file_data.seek(0)
-            return file_data
-        except Exception as e:
-            error_messages.append(f"Error writing ZIP file to memory: {e}")
-            return None
     
     def process_zip(input_zip, format, quality, width, height, watermark, opacity, position, text_watermark, text_watermark_color, font_path, font_size):
+        def ext_zip2mem(zip_file):
+            try:
+                # Create an in-memory binary stream to hold the file's data
+                file_data = io.BytesIO()
+                # Read the contents of the ZipExtFile object into memory
+                file_data.write(zip_file.read())
+                # Reset the stream position to the beginning
+                file_data.seek(0)
+                return file_data
+            except Exception as e:
+                print(f'Error writing ZIP file to memory: {e}')
+                error_messages.append(f'Error writing ZIP file to memory: {e}')
+                return None
+        
         try:
             to_process = []
             print(f'Input object: {input_zip}')
@@ -192,6 +235,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 img = Image.open(io.BytesIO(obj_file.read()))
                                 to_process.append((obj.filename, img))
                 except Exception as e:
+                    print(f'Error preparing files: {e}')
                     error_messages.append(f'Error preparing files: {e}')
 
             output_zip = io.BytesIO()
@@ -231,13 +275,16 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                             output_zipf.writestr(f'{obj_filename}.{format}', output.getvalue())
                     output_zip.seek(0)
                 except Exception as e:
+                    print(f'Error processing images: {e}')
                     error_messages.append(f'Error processing images: {e}')
 
             output_zip.seek(0)
             return output_zip
         except zipfile.BadZipFile:
+            print(f'Could not open zip file: {input_zip.filename}')
             error_messages.append(f'Could not open zip file: {input_zip.filename}')
         except Exception as e:
+            print((f'Error processing zip: {e}'))
             error_messages.append(f'Error processing zip: {e}')
         
     if allowed_file(input_file.filename, ALLOWED_EXTENSIONS):
@@ -287,6 +334,7 @@ def index():
             if obj_exists(request.files.get('file-input')):
                 files = request.files.getlist('file-input')
         except Exception as e:
+            print(f'File input error: {e}')
             error_messages.append(f'File input error: {e}')
         
         format = sanitize_input(request.form['format']).lower() if request.form['format'] else 'webp'
@@ -318,6 +366,7 @@ def index():
                             font_path = uploaded_font_path
                 except Exception as e:
                     font_obj = None
+                    print(f'Font input error: {e}')
                     error_messages.append(f'Font input error: {e}')
             else:
                 font_path = FONTS[font_files.index(selected_font)]
@@ -329,7 +378,8 @@ def index():
             watermark_obj = None if len(request.files.get('watermark-image').read()) == 0 else request.files.get('watermark-image')
             if sanitize_input(request.form['watermark-type']) == 'image':
                 if watermark_obj is None:
-                    error_messages.append("No watermark image uploaded")
+                    print('No watermark image uploaded')
+                    error_messages.append('No watermark image uploaded')
                 else:
                     if allowed_file(secure_filename(watermark_obj.filename), ALLOWED_IMAGES):
                         watermark_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(watermark_obj.filename))
@@ -379,6 +429,7 @@ def index():
                                      as_attachment=True,
                                      download_name=processed_files[0][0])
         except Exception as e:
+            print(e)
             error_messages.append(f'Error: {e}')
             for messages in error_messages:
                 flash(f'{messages}', 'error')
