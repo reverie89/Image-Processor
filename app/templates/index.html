@@ -1,394 +1,619 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Image Processor</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
     <style>
-        body {
-            background-color: #333;
-            color: #fff;
-        }
+      body {
+        background-color: #333;
+        color: #fff;
+      }
 
-        .drop-area {
-            border: 2px dashed #ccc;
-            border-radius: 5px;
-            padding: 25px;
-            text-align: center;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
+      .drop-area {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 25px;
+        text-align: center;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
 
-        .drop-area.highlight {
-            border-color: #e6d266;
-        }
+      .drop-area.highlight {
+        border-color: #e6d266;
+      }
 
-        .file-name {
-            margin-top: 10px;
-            color: #e6d266;
-        }
+      .file-name {
+        margin-top: 10px;
+        color: #e6d266;
+      }
     </style>
-</head>
-<body>
-
-<div class="container mt-5">
-    <div class="row">
+  </head>
+  <body>
+    <div class="container mt-5">
+      <div class="row">
         <div class="col-md-6 offset-md-3">
-            <h2 class="text-center mb-4">Image Processor</h2>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="alert alert-danger mt-4" role="alert">
-                        <ul class="mb-0">
-                            {% for category, message in messages %}
-                                <li>{{ message }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}
-            {% endwith %}
-            <form id="image-form" method="post" enctype="multipart/form-data">
-                <div class="drop-area" id="fileDropArea">
-                    <p>Click or drag files here to upload</p>
-                    <p>Accepted file formats: .zip, .jpg, .jpeg, .gif, .png, .webp</p>
-                    <div class="file-name" id="fileNames"></div>
-                    <input type="file" multiple id="fileInput" name="file-input" accept=".zip, .jpg, .jpeg, .gif, .png, .webp" style="display: none;">
-                </div>
-                <div class="form-group">
-                    <label for="width">Max Width: (resizing will occur if input image's width exceeds this value)</label>
-                    <input type="number" class="form-control" id="width" name="width" min="1" value="1600">
-                </div>
-                <div class="form-group">
-                    <label for="width">Max Height: (resizing will occur if input image's height exceeds this value)</label>
-                    <input type="number" class="form-control" id="height" name="height" min="1" value="900">
-                </div>
-                <label>* It will resize to the smaller of the max input values keeping the aspect ratio</label>
-                <div class="form-group">
-                    <div class="form-check">
-                        <input class="form-check-input watermark-type" type="radio" name="watermark-type" id="no-watermark" value="none" checked>
-                        <label class="form-check-label" for="no-watermark">No Watermark</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input watermark-type" type="radio" name="watermark-type" id="watermark-image" value="image">
-                        <label class="form-check-label" for="watermark-image">Watermark Image</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input watermark-type" type="radio" name="watermark-type" id="watermark-text" value="text">
-                        <label class="form-check-label" for="watermark-text">Text Watermark</label>
-                    </div>
-                </div>
-                
-                <div class="form-group" id="watermark-opacity" style="display: none;">
-                    <label for="opacity-slider">Watermark Opacity:</label>
-                    <input type="range" class="form-control-range" id="opacity-slider" name="opacity" min="0" max="100" step="1" value="50">
-                    <span id="opacity-value">Opacity: 50%</span>
-                </div>
+          <h2 class="text-center mb-4">Image Processor</h2>
+          {% with messages = get_flashed_messages(with_categories=true) %} {% if
+          messages %}
+          <div class="alert alert-danger mt-4" role="alert">
+            <ul class="mb-0">
+              {% for category, message in messages %}
+              <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %} {% endwith %}
+          <form id="image-form" method="post" enctype="multipart/form-data">
+            <div class="drop-area" id="fileDropArea">
+              <p>Click or drag files here to upload</p>
+              <p>Accepted file formats: .zip, .jpg, .jpeg, .gif, .png, .webp</p>
+              <div class="file-name" id="fileNames"></div>
+              <input
+                type="file"
+                multiple
+                id="fileInput"
+                name="file-input"
+                accept=".zip, .jpg, .jpeg, .gif, .png, .webp"
+                style="display: none"
+              />
+            </div>
+            <div class="form-group">
+              <label for="width"
+                >Max Width: (resizing will occur if input image's width exceeds
+                this value)</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="width"
+                name="width"
+                min="1"
+                value="1600"
+              />
+            </div>
+            <div class="form-group">
+              <label for="width"
+                >Max Height: (resizing will occur if input image's height
+                exceeds this value)</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="height"
+                name="height"
+                min="1"
+                value="900"
+              />
+            </div>
+            <label
+              >* It will resize to the smaller of the max input values keeping
+              the aspect ratio</label
+            >
+            <div class="form-group">
+              <div class="form-check">
+                <input
+                  class="form-check-input watermark-type"
+                  type="radio"
+                  name="watermark-type"
+                  id="no-watermark"
+                  value="none"
+                  checked
+                />
+                <label class="form-check-label" for="no-watermark"
+                  >No Watermark</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input watermark-type"
+                  type="radio"
+                  name="watermark-type"
+                  id="watermark-image"
+                  value="image"
+                />
+                <label class="form-check-label" for="watermark-image"
+                  >Watermark Image</label
+                >
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input watermark-type"
+                  type="radio"
+                  name="watermark-type"
+                  id="watermark-text"
+                  value="text"
+                />
+                <label class="form-check-label" for="watermark-text"
+                  >Text Watermark</label
+                >
+              </div>
+            </div>
 
-                <div class="drop-area" id="imageDropArea" style="display: none;">
-                    <p>Click or drag a watermark image here</p>
-                    <p>Accepted file formats: .jpg, .jpeg, .gif, .png, .webp</p>
-                    <div class="file-name" id="imageFileName"></div>
-                    <input type="file" id="imageInput" name="watermark-image" accept=".jpg, .jpeg, .gif, .png, .webp" style="display: none;">
-                </div>
-                
-                <div class="form-group" id="text-watermark-input" style="display: none;">
-                    <label for="text-watermark">Text Watermark:</label>
-                    <input type="text" class="form-control" id="text-watermark" name="text-watermark">
-                </div>
-                
-                <div class="form-group" id="watermark-position-x" style="display: none;">
-                    <label for="watermark-position-x">X Coordinate:</label>
-                    <input type="number" class="form-control" id="watermark-position-x" name="watermark-position-x" min="0" value="100">
-                </div>
-                
-                <div class="form-group" id="watermark-position-y" style="display: none;">
-                    <label for="watermark-position-y">Y Coordinate:</label>
-                    <input type="number" class="form-control" id="watermark-position-y" name="watermark-position-y" min="0" value="100">
-                </div>
+            <div
+              class="form-group"
+              id="watermark-text-opacity"
+              style="display: none"
+            >
+              <label for="opacity-slider">Text Opacity:</label>
+              <input
+                type="range"
+                class="form-control-range"
+                id="text-opacity-slider"
+                name="opacity-text"
+                min="0"
+                max="100"
+                step="1"
+                value="100"
+              />
+              <span id="text-opacity-value">Opacity: 100%</span>
+            </div>
 
-                <div class="form-group" id="font-select" style="display: none;">
-                    <label for="font-select">Select Font:</label>
-                    <select class="form-control" id="font-select-option" name="font-select-option">
-                        {% for font in fonts %}
-                        <option value="{{ font }}">{{ font }}</option>
-                        {% endfor %}
-                    <option value="upload" id="selected-watermark-font-name">Upload Font</option>
-                    </select>
-                </div>
-                
-                <div class="drop-area" id="fontDropArea" style="display: none;">
-                    <p>Click or drag a font file here to upload</p>
-                    <p>Accepted file formats: .ttf</p>
-                    <div class="file-name" id="fontFileName"></div>
-                    <input type="file" id="fontInput" name="watermark-font" accept=".ttf" style="display: none;">
-                </div>
-                
-                <div class="form-group" id="text-watermark-font-size" style="display: none;">
-                    <label for="text-watermark-font-size">Font Size:</label>
-                    <input type="number" class="form-control" id="text-watermark-font-size" name="text-watermark-font-size" min="8" max="100" value="36">
-                </div>
-                
-                <div class="form-group" id="text-watermark-font-color" style="display: none;">
-                    <label for="text-watermark-color">Text Color:</label>
-                    <input type="color" class="form-control" id="text-watermark-color" name="text-watermark-color" value="#ac1515">
-                    <input type="text" class="form-control" id="text-watermark-color-value" placeholder="#ac1515">
-                </div>
-                
-                <div class="form-group">
-                    <label for="format">Output Format:</label>
-                    <select class="form-control" id="format" name="format">
-                        <option value="jpg">JPG</option>
-                        <option value="png">PNG</option>
-                        <option value="gif">GIF</option>
-                        <option value="webp" selected>WEBP</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="quality">Quality (10-100):</label>
-                    <input type="number" class="form-control" id="quality" name="quality" value="75" min="10" max="100">
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Process Image</button>
-            </form>
+            <div
+              class="form-group"
+              id="watermark-opacity"
+              style="display: none"
+            >
+              <label for="opacity-slider">Watermark Opacity:</label>
+              <input
+                type="range"
+                class="form-control-range"
+                id="opacity-slider"
+                name="opacity-bg"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+              />
+              <span id="opacity-value">Opacity: 50%</span>
+            </div>
+
+            <div class="drop-area" id="imageDropArea" style="display: none">
+              <p>Click or drag a watermark image here</p>
+              <p>Accepted file formats: .jpg, .jpeg, .gif, .png, .webp</p>
+              <div class="file-name" id="imageFileName"></div>
+              <input
+                type="file"
+                id="imageInput"
+                name="watermark-image"
+                accept=".jpg, .jpeg, .gif, .png, .webp"
+                style="display: none"
+              />
+            </div>
+
+            <div
+              class="form-group"
+              id="text-watermark-input"
+              style="display: none"
+            >
+              <label for="text-watermark">Text Watermark:</label>
+              <input
+                type="text"
+                class="form-control"
+                id="text-watermark"
+                name="text-watermark"
+              />
+            </div>
+
+            <div
+              class="form-group"
+              id="watermark-position-x"
+              style="display: none"
+            >
+              <label for="watermark-position-x">X Coordinate:</label>
+              <input
+                type="number"
+                class="form-control"
+                id="watermark-position-x"
+                name="watermark-position-x"
+                min="0"
+                value="100"
+              />
+            </div>
+
+            <div
+              class="form-group"
+              id="watermark-position-y"
+              style="display: none"
+            >
+              <label for="watermark-position-y">Y Coordinate:</label>
+              <input
+                type="number"
+                class="form-control"
+                id="watermark-position-y"
+                name="watermark-position-y"
+                min="0"
+                value="100"
+              />
+            </div>
+
+            <div class="form-group" id="font-select" style="display: none">
+              <label for="font-select">Select Font:</label>
+              <select
+                class="form-control"
+                id="font-select-option"
+                name="font-select-option"
+              >
+                {% for font in fonts %}
+                <option value="{{ font }}">{{ font }}</option>
+                {% endfor %}
+                <option value="upload" id="selected-watermark-font-name">
+                  Upload Font
+                </option>
+              </select>
+            </div>
+
+            <div class="drop-area" id="fontDropArea" style="display: none">
+              <p>Click or drag a font file here to upload</p>
+              <p>Accepted file formats: .ttf</p>
+              <div class="file-name" id="fontFileName"></div>
+              <input
+                type="file"
+                id="fontInput"
+                name="watermark-font"
+                accept=".ttf"
+                style="display: none"
+              />
+            </div>
+
+            <div class="form-group" id="watermark-size" style="display: none">
+              <label for="watermark-size">Watermark Size:</label>
+              <input
+                type="number"
+                class="form-control"
+                id="watermark-size"
+                name="watermark-size"
+                step="any"
+                value="50"
+              />
+            </div>
+
+            <div
+              class="form-group"
+              id="text-watermark-font-color"
+              style="display: none"
+            >
+              <label for="text-watermark-color">Text Color:</label>
+              <input
+                type="color"
+                class="form-control"
+                id="text-watermark-color"
+                name="text-watermark-color"
+                value="#ac1515"
+              />
+              <input
+                type="text"
+                class="form-control"
+                id="text-watermark-color-value"
+                placeholder="#ac1515"
+              />
+            </div>
+
+            <div
+              class="form-group"
+              id="text-watermark-rotation"
+              style="display: none"
+            >
+              <label for="text-watermark-rotation">Rotation:</label>
+              <input
+                type="range"
+                class="form-control-range"
+                id="rotation-slider"
+                name="watermark-rotation"
+                min="0"
+                max="360"
+                step="1"
+                value="45"
+              />
+              <span id="rotation-value">Angle: 45°</span>
+            </div>
+
+            <div class="form-group">
+              <label for="format">Output Format:</label>
+              <select class="form-control" id="format" name="format">
+                <option value="jpg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="gif">GIF</option>
+                <option value="webp" selected>WEBP</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="quality">Quality (10-100):</label>
+              <input
+                type="number"
+                class="form-control"
+                id="quality"
+                name="quality"
+                value="75"
+                min="10"
+                max="100"
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Process Image</button>
+          </form>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-        const fileDropArea = document.getElementById('fileDropArea');
-    const fileInput = document.getElementById('fileInput');
-    const fileNames = document.getElementById('fileNames');
+    <script>
+      const fileDropArea = document.getElementById("fileDropArea");
+      const fileInput = document.getElementById("fileInput");
+      const fileNames = document.getElementById("fileNames");
 
-    const imageDropArea = document.getElementById('imageDropArea');
-    const imageInput = document.getElementById('imageInput');
-    const imageFileName = document.getElementById('imageFileName');
+      const imageDropArea = document.getElementById("imageDropArea");
+      const imageInput = document.getElementById("imageInput");
+      const imageFileName = document.getElementById("imageFileName");
 
-    const fontDropArea = document.getElementById('fontDropArea');
-    const fontInput = document.getElementById('fontInput');
-    const fontFileName = document.getElementById('fontFileName');
+      const fontDropArea = document.getElementById("fontDropArea");
+      const fontInput = document.getElementById("fontInput");
+      const fontFileName = document.getElementById("fontFileName");
 
-    // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      // Prevent default drag behaviors
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
         fileDropArea.addEventListener(eventName, preventDefaults, false);
         imageDropArea.addEventListener(eventName, preventDefaults, false);
         fontDropArea.addEventListener(eventName, preventDefaults, false);
         document.body.addEventListener(eventName, preventDefaults, false);
-    });
+      });
 
-    // Highlight drop areas when file is dragged over them
-    ['dragenter', 'dragover'].forEach(eventName => {
+      // Highlight drop areas when file is dragged over them
+      ["dragenter", "dragover"].forEach((eventName) => {
         fileDropArea.addEventListener(eventName, highlight, false);
         imageDropArea.addEventListener(eventName, highlight, false);
         fontDropArea.addEventListener(eventName, highlight, false);
-    });
+      });
 
-    // Remove highlight when file is dragged away
-    ['dragleave', 'drop'].forEach(eventName => {
+      // Remove highlight when file is dragged away
+      ["dragleave", "drop"].forEach((eventName) => {
         fileDropArea.addEventListener(eventName, unhighlight, false);
         imageDropArea.addEventListener(eventName, unhighlight, false);
         fontDropArea.addEventListener(eventName, unhighlight, false);
-    });
+      });
 
-    // Handle dropped files
-    fileDropArea.addEventListener('drop', handleDrop, false);
-    imageDropArea.addEventListener('drop', handleImageDrop, false);
-    fontDropArea.addEventListener('drop', handleFontDrop, false);
+      // Handle dropped files
+      fileDropArea.addEventListener("drop", handleDrop, false);
+      imageDropArea.addEventListener("drop", handleImageDrop, false);
+      fontDropArea.addEventListener("drop", handleFontDrop, false);
 
-    function preventDefaults(e) {
+      function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
-    }
+      }
 
-    function highlight() {
-        this.classList.add('highlight');
-    }
+      function highlight() {
+        this.classList.add("highlight");
+      }
 
-    function unhighlight() {
-        this.classList.remove('highlight');
-    }
+      function unhighlight() {
+        this.classList.remove("highlight");
+      }
 
-    function handleDrop(e) {
+      function handleDrop(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
         handleFiles(files);
-    }
+      }
 
-    function handleImageDrop(e) {
+      function handleImageDrop(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
         handleImage(files);
-    }
+      }
 
-    function handleFontDrop(e) {
+      function handleFontDrop(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
         handleFont(files);
-    }
+      }
 
-    function handleFiles(files) {
+      function handleFiles(files) {
         // Display filenames in the file list
-        let filenames = '';
-        Array.from(files).forEach(file => {
-            filenames += file.name + '<br>';
+        let filenames = "";
+        Array.from(files).forEach((file) => {
+          filenames += file.name + "<br>";
         });
         // Update file names
         fileNames.innerHTML = filenames;
         // Update file input with selected files
         fileInput.files = files;
-    }
+      }
 
-    function handleImage(files) {
+      function handleImage(files) {
         if (files.length > 0) {
-            // Only accept one image file
-            const file = files[0];
-            if (file.type.startsWith('image/')) {
-                // Update image file name
-                imageFileName.textContent = file.name;
-                // Update image input with selected file
-                imageInput.files = files;
-            } else {
-                alert('Please select an image file (JPG JPEG GIF PNG WEBP).');
-            }
+          // Only accept one image file
+          const file = files[0];
+          if (file.type.startsWith("image/")) {
+            // Update image file name
+            imageFileName.textContent = file.name;
+            // Update image input with selected file
+            imageInput.files = files;
+          } else {
+            alert("Please select an image file (JPG JPEG GIF PNG WEBP).");
+          }
         }
-    }
+      }
 
-    function handleFont(files) {
+      function handleFont(files) {
         if (files.length > 0) {
-            // Only accept one font file
-            const file = files[0];
-            const fileName = file.name;
-            const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
-            if (fileExtension === 'ttf') {
-                // Update font file name
-                fontFileName.textContent = fileName;
-                // Update font input with selected file
-                fontInput.files = files;
-            } else {
-                alert('Please select a TTF font file.');
-            }
+          // Only accept one font file
+          const file = files[0];
+          const fileName = file.name;
+          const fileExtension = fileName
+            .substring(fileName.lastIndexOf(".") + 1)
+            .toLowerCase();
+          if (fileExtension === "ttf") {
+            // Update font file name
+            fontFileName.textContent = fileName;
+            // Update font input with selected file
+            fontInput.files = files;
+          } else {
+            alert("Please select a TTF font file.");
+          }
         }
-    }
+      }
 
-    // Open file explorer when drop areas are clicked
-    fileDropArea.addEventListener('click', () => {
+      // Open file explorer when drop areas are clicked
+      fileDropArea.addEventListener("click", () => {
         fileInput.click();
-    });
+      });
 
-    imageDropArea.addEventListener('click', () => {
+      imageDropArea.addEventListener("click", () => {
         imageInput.click();
-    });
+      });
 
-    fontDropArea.addEventListener('click', () => {
+      fontDropArea.addEventListener("click", () => {
         fontInput.click();
-    });
+      });
 
-    // Update drop areas when files are selected using file inputs
-    fileInput.addEventListener('change', () => {
+      // Update drop areas when files are selected using file inputs
+      fileInput.addEventListener("change", () => {
         const files = fileInput.files;
         handleFiles(files);
-    });
+      });
 
-    imageInput.addEventListener('change', () => {
+      imageInput.addEventListener("change", () => {
         const files = imageInput.files;
         handleImage(files);
-    });
+      });
 
-    fontInput.addEventListener('change', () => {
+      fontInput.addEventListener("change", () => {
         const files = fontInput.files;
         handleFont(files);
-    });
+      });
 
-    document.querySelectorAll('.watermark-type').forEach(function (radio) {
-        radio.addEventListener('change', function () {
-            var watermarkType = this.value;
-            var uploadWatermarkArea = document.getElementById('imageDropArea');
-            var watermarkOpacity = document.getElementById('watermark-opacity');
-            var watermarkPositionX = document.getElementById('watermark-position-x');
-            var watermarkPositionY = document.getElementById('watermark-position-y');
-            var textWatermarkInput = document.getElementById('text-watermark-input');
-            var fontSelectOption = document.getElementById('font-select-option');
-            var fontSelect = document.getElementById('font-select');
-            var fontSize = document.getElementById('text-watermark-font-size');
-            var fontColor = document.getElementById('text-watermark-font-color');
-            var fontDropArea = document.getElementById('fontDropArea');
+      document.querySelectorAll(".watermark-type").forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          var watermarkType = this.value;
+          var uploadWatermarkArea = document.getElementById("imageDropArea");
+          var watermarkTextOpacity = document.getElementById(
+            "watermark-text-opacity"
+          );
+          var watermarkOpacity = document.getElementById("watermark-opacity");
+          var watermarkPositionX = document.getElementById(
+            "watermark-position-x"
+          );
+          var watermarkPositionY = document.getElementById(
+            "watermark-position-y"
+          );
+          var textWatermarkInput = document.getElementById(
+            "text-watermark-input"
+          );
+          var fontSelectOption = document.getElementById("font-select-option");
+          var fontSelect = document.getElementById("font-select");
+          var watermarkSize = document.getElementById("watermark-size");
+          var fontColor = document.getElementById("text-watermark-font-color");
+          var watermarkRotation = document.getElementById(
+            "text-watermark-rotation"
+          );
+          var fontDropArea = document.getElementById("fontDropArea");
 
-            if (watermarkType === 'text') {
-                uploadWatermarkArea.style.display = 'none';
-                watermarkOpacity.style.display = 'block';
-                watermarkPositionX.style.display = 'block';
-                watermarkPositionY.style.display = 'block';
-                textWatermarkInput.style.display = 'block';
-                fontSelect.style.display = 'block';
-                fontSize.style.display = 'block';
-                fontColor.style.display = 'block';
-                if (fontSelectOption.value === 'upload') {
-                    fontDropArea.style.display = 'block';
-                } else {
-                    fontDropArea.style.display = 'none';
-                }
-            } else if (watermarkType === 'image') {
-                uploadWatermarkArea.style.display = 'block';
-                watermarkOpacity.style.display = 'block';
-                watermarkPositionX.style.display = 'block';
-                watermarkPositionY.style.display = 'block';
-                textWatermarkInput.style.display = 'none';
-                fontSelect.style.display = 'none';
-                fontSize.style.display = 'none';
-                fontColor.style.display = 'none';
-                fontDropArea.style.display = 'none';
+          if (watermarkType === "text") {
+            uploadWatermarkArea.style.display = "none";
+            watermarkTextOpacity.style.display = "block";
+            watermarkOpacity.style.display = "block";
+            watermarkPositionX.style.display = "block";
+            watermarkPositionY.style.display = "block";
+            watermarkRotation.style.display = "block";
+            textWatermarkInput.style.display = "block";
+            fontSelect.style.display = "block";
+            watermarkSize.style.display = "block";
+            fontColor.style.display = "block";
+            if (fontSelectOption.value === "upload") {
+              fontDropArea.style.display = "block";
             } else {
-                uploadWatermarkArea.style.display = 'none';
-                watermarkOpacity.style.display = 'none';
-                watermarkPositionX.style.display = 'none';
-                watermarkPositionY.style.display = 'none';
-                textWatermarkInput.style.display = 'none';
-                fontSelect.style.display = 'none';
-                fontSize.style.display = 'none';
-                fontColor.style.display = 'none';
-                fontDropArea.style.display = 'none';
+              fontDropArea.style.display = "none";
             }
+          } else if (watermarkType === "image") {
+            uploadWatermarkArea.style.display = "block";
+            watermarkTextOpacity.style.display = "none";
+            watermarkOpacity.style.display = "block";
+            watermarkPositionX.style.display = "block";
+            watermarkPositionY.style.display = "block";
+            watermarkRotation.style.display = "block";
+            textWatermarkInput.style.display = "none";
+            fontSelect.style.display = "none";
+            watermarkSize.style.display = "block";
+            fontColor.style.display = "none";
+            fontDropArea.style.display = "none";
+          } else {
+            uploadWatermarkArea.style.display = "none";
+            watermarkTextOpacity.style.display = "none";
+            watermarkOpacity.style.display = "none";
+            watermarkPositionX.style.display = "none";
+            watermarkPositionY.style.display = "none";
+            watermarkRotation.style.display = "none";
+            textWatermarkInput.style.display = "none";
+            fontSelect.style.display = "none";
+            watermarkSize.style.display = "none";
+            fontColor.style.display = "none";
+            fontDropArea.style.display = "none";
+          }
         });
-    });
+      });
 
-    document.getElementById('font-select-option').addEventListener('change', function () {
-        var fontSelectOption = document.getElementById('font-select-option');
-        var fontDropArea = document.getElementById('fontDropArea');
+      document
+        .getElementById("font-select-option")
+        .addEventListener("change", function () {
+          var fontSelectOption = document.getElementById("font-select-option");
+          var fontDropArea = document.getElementById("fontDropArea");
 
-        if (fontSelectOption.value === 'upload') {
-            fontDropArea.style.display = 'block';
-        } else {
-            fontDropArea.style.display = 'none';
-        }
-    });
-    var opacitySlider = document.getElementById('opacity-slider');
-    var opacityValue = document.getElementById('opacity-value');
+          if (fontSelectOption.value === "upload") {
+            fontDropArea.style.display = "block";
+          } else {
+            fontDropArea.style.display = "none";
+          }
+        });
+      var textOpacitySlider = document.getElementById("text-opacity-slider");
+      var textOpacityValue = document.getElementById("text-opacity-value");
 
-    opacitySlider.addEventListener('input', function () {
-        opacityValue.textContent = 'Opacity: ' + this.value + '%';
-    });
-    
-    var textWatermarkColor = document.getElementById('text-watermark-color');
-    var textWatermarkColorValue = document.getElementById('text-watermark-color-value');
+      textOpacitySlider.addEventListener("input", function () {
+        textOpacityValue.textContent = "Opacity: " + this.value + "%";
+      });
 
-    textWatermarkColor.addEventListener('input', function() {
+      var opacitySlider = document.getElementById("opacity-slider");
+      var opacityValue = document.getElementById("opacity-value");
+
+      opacitySlider.addEventListener("input", function () {
+        opacityValue.textContent = "Opacity: " + this.value + "%";
+      });
+
+      var rotationSlider = document.getElementById("rotation-slider");
+      var rotationValue = document.getElementById("rotation-value");
+
+      rotationSlider.addEventListener("input", function () {
+        rotationValue.textContent = "Angle: " + this.value + "°";
+      });
+
+      var textWatermarkColor = document.getElementById("text-watermark-color");
+      var textWatermarkColorValue = document.getElementById(
+        "text-watermark-color-value"
+      );
+
+      textWatermarkColor.addEventListener("input", function () {
         textWatermarkColorValue.value = textWatermarkColor.value;
-    });
+      });
 
-    textWatermarkColorValue.addEventListener('input', function() {
+      textWatermarkColorValue.addEventListener("input", function () {
         textWatermarkColor.value = textWatermarkColorValue.value;
-    });
+      });
 
-    textWatermarkColorValue.addEventListener('blur', function() {
+      textWatermarkColorValue.addEventListener("blur", function () {
         var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-        var hex = "#" + this.value.replace(shorthandRegex, function(m, r, g, b) {
+        var hex =
+          "#" +
+          this.value.replace(shorthandRegex, function (m, r, g, b) {
             return r + r + g + g + b + b;
-        });
+          });
         textWatermarkColor.value = hex;
         textWatermarkColorValue.value = hex;
-        textWatermarkColor.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-</script>
-
-</body>
+        textWatermarkColor.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    </script>
+  </body>
 </html>
