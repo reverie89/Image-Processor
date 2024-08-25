@@ -52,9 +52,49 @@ def sanitize_input(input_str):
     return escape(input_str)
 
 
-def process_input(input_file, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, text_watermark, text_watermark_color, font_path):
+def process_input(input_file, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, resize_w_size, text_watermark, text_watermark_color, font_path):
 
-    def process_frame(image: Image.Image, resize_aspect: bool = True, resize: tuple = None, rotation: int = None, alpha: int = None, wmark: tuple = None):
+    def prep_wmark_size(image: Image.Image, wmark_img: Image.Image, wmark_resize: int = 40):
+
+        output = io.BytesIO()
+        frames = []
+
+        dimensions = int(image.width), int(image.height)
+
+        if wmark_img.width >= dimensions[0] or wmark_img.height >= dimensions[1]:
+
+            dimensions = int(image.width * (wmark_resize/100)
+                             ), int(image.height * (wmark_resize/100))
+
+        # Animated watermark
+        if isAnimatedImg(wmark_img):
+
+            for i in range(wmark_img.n_frames):
+
+                frame = process_frame(
+                    image=wmark_img.copy(),
+                    resize=dimensions
+                )
+                frames.append(frame.copy())
+                wmark_img.seek(i)
+            wmark_img.seek(0)
+
+        # Non-animated watermark
+        else:
+
+            frame = process_frame(
+                image=wmark_img.copy(),
+                resize=dimensions
+            )
+            frames.append(frame.copy())
+
+        frames[0].save(output, format="PNG", save_all=True, append_images=frames[1:],
+                       loop=0)
+
+        return Image.open(output)
+
+    def process_frame(image: Image.Image, resize_aspect: bool = True, resize: tuple = None, rotation: int = None, alpha: int = None, wmark_img: Image.Image = None, wmark_pos: tuple = (0, 0)):
+        image = image.convert("RGBA")
         if resize is not None:
             # keep aspect ratio
             if resize_aspect:
@@ -75,75 +115,161 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
             image = image.resize((new_width, new_height))
         if alpha is not None:
             image.putalpha(int(255 * (alpha / 100)))
-        if wmark is not None:
-            image.paste(wmark[0], wmark[1], wmark[0])
+        if wmark_img is not None:
+            image.paste(wmark_img, wmark_pos, wmark_img)
         if rotation is not None:
             image = image.rotate(rotation, expand=True, fillcolor=None)
         return image
 
-    def convertImg(image: Image.Image, resize_aspect: bool = True, resize: tuple = None, rotation: int = None, alpha: int = None, wmark: tuple = None):
+    def convertImg(image: Image.Image, resize_aspect: bool = True, resize: tuple = None, rotation: int = None, alpha: int = None, wmark_resize: int = 40, wmark_img: Image.Image = None, wmark_pos: tuple = None):
         output = io.BytesIO()
-        if image.format == 'GIF':
-            frames = []
-            try:
-                while True:
-                    frame = process_frame(image.convert("RGBA"), resize_aspect,
-                                          resize, rotation, alpha, wmark)
-                    frames.append(frame.copy())
-                    image.seek(image.tell() + 1)
-            except EOFError:
-                pass  # Reached the end of the GIF
-            frames[0].save(
-                output,
-                format="PNG",
-                save_all=True,
-                append_images=frames[1:],
-                loop=0
-            )
-        else:
-            print(image)
-            frame = process_frame(image.convert("RGBA"), resize_aspect,
-                                  resize, rotation, alpha, wmark)
-            print(frame)
-            frame.save(output, format="PNG")
-        output.seek(0)
-        return Image.open(output)
 
-    def process_gif_frames(image, width, height, wmark=None):
         frames = []
-        try:
-            while True:
-                frame = image.convert("RGBA")
-                frame = frame.resize((width, height))
-                # watermark
-                if wmark is not None:
-                    frame.paste(wmark, position, wmark)
+
+        # Animated image
+        if isAnimatedImg(image):
+
+            # No watermark
+            if wmark_img is None:
+
+                for i in range(image.n_frames):
+
+                    frame = process_frame(
+                        image=image.copy(),
+                        resize_aspect=resize_aspect,
+                        resize=resize,
+                        rotation=rotation,
+                        alpha=alpha
+                    )
+                    frames.append(frame.copy())
+
+                    image.seek(i)
+
+                image.seek(0)
+
+            # Has watermark
+            else:
+
+                # Animated watermark
+                if isAnimatedImg(wmark_img):
+
+                    for i in range(image.n_frames):
+
+                        frame = process_frame(
+                            image=image.copy(),
+                            resize_aspect=resize_aspect,
+                            resize=resize,
+                            rotation=rotation,
+                            alpha=alpha,
+                            wmark_img=prep_wmark_size(
+                                image=image.copy(),
+                                wmark_img=wmark_img.copy(),
+                                wmark_resize=wmark_resize),
+                            wmark_pos=wmark_pos
+                        )
+                        frames.append(frame.copy())
+
+                        if i < wmark_img.n_frames:
+                            wmark_img.seek(i)
+                        image.seek(i)
+
+                    wmark_img.seek(0)
+                    image.seek(0)
+
+                # Non-animated watermark
+                else:
+
+                    for i in range(image.n_frames):
+
+                        frame = process_frame(
+                            image=image.copy(),
+                            resize_aspect=resize_aspect,
+                            resize=resize,
+                            rotation=rotation,
+                            alpha=alpha,
+                            wmark_img=prep_wmark_size(
+                                image=image.copy(),
+                                wmark_img=wmark_img.copy(),
+                                wmark_resize=wmark_resize),
+                            wmark_pos=wmark_pos
+                        )
+                        frames.append(frame.copy())
+
+                        image.seek(i)
+
+                    image.seek(0)
+
+        # Non-animated image
+        else:
+
+            # No watermark
+            if wmark_img is None:
+
+                frame = process_frame(
+                    image=image.copy(),
+                    resize_aspect=resize_aspect,
+                    resize=resize,
+                    rotation=rotation,
+                    alpha=alpha
+                )
                 frames.append(frame.copy())
-                image.seek(image.tell() + 1)
-        except EOFError:
-            pass  # Reached the end of the GIF
-        return frames
 
-    def resize_image(image: Image.Image, width: int, height: int):
+            # Has watermark
+            else:
 
-        aspect_ratio = image.height / image.width
-        output = io.BytesIO()
-        new_width = image.width
-        new_height = image.height
+                # Animated watermark
+                if isAnimatedImg(wmark_img):
 
-        if image.width > width:
-            new_width = width
-            new_height = int(width * aspect_ratio)
-        elif image.height > height:
-            new_width = int(height / aspect_ratio)
-            new_height = height
+                    for i in range(wmark_img.n_frames):
 
-        resized_image = image.resize((new_width, new_height))
-        resized_image.save(output, format="PNG")
+                        frame = process_frame(
+                            image=image.copy(),
+                            resize_aspect=resize_aspect,
+                            resize=resize,
+                            rotation=rotation,
+                            alpha=alpha,
+                            wmark_img=prep_wmark_size(
+                                image=image.copy(),
+                                wmark_img=wmark_img.copy(),
+                                wmark_resize=wmark_resize),
+                            wmark_pos=wmark_pos
+                        )
+                        frames.append(frame.copy())
 
+                        wmark_img.seek(i)
+
+                    wmark_img.seek(0)
+                    image.seek(0)
+
+                # Non-animated watermark
+                else:
+
+                    frame = process_frame(
+                        image=image.copy(),
+                        resize_aspect=resize_aspect,
+                        resize=resize,
+                        rotation=rotation,
+                        alpha=alpha,
+                        wmark_img=prep_wmark_size(
+                            image=image.copy(),
+                            wmark_img=wmark_img.copy(),
+                            wmark_resize=wmark_resize),
+                        wmark_pos=wmark_pos
+                    )
+                    frames.append(frame.copy())
+
+        frames[0].save(
+            output,
+            format="PNG",
+            save_all=True,
+            append_images=frames[1:],
+            loop=0
+        )
         output.seek(0)
-
         return Image.open(output)
+
+    def isAnimatedImg(image: Image.Image) -> bool:
+        return hasattr(image, 'n_frames') and image.n_frames > 1
 
     def save_image(img, format, quality, width, height):
         output = io.BytesIO()
@@ -160,17 +286,17 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
         output.seek(0)
         return output
 
-    def process_image(img, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, text_watermark, text_watermark_color, font_path):
+    def process_image(img, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, resize_w_size, text_watermark, text_watermark_color, font_path):
         # Function to add watermark image
 
-        def add_image_watermark(img: Image.Image, watermark: Image.Image, w_rotation: int, w_size: int, opacity_bg: int, position: tuple):
+        def add_image_watermark(img: Image.Image, watermark: Image.Image, w_rotation: int, w_size: int, resize_w_size: int, opacity_bg: int, position: tuple):
             try:
                 watermark_image = Image.open(watermark)
                 watermark_image = convertImg(
                     image=watermark_image, resize=(
                         int(watermark_image.width * (w_size/100)), int(watermark_image.height * (w_size/100))), alpha=opacity_bg, rotation=w_rotation)
                 new_image = convertImg(
-                    image=img, wmark=(watermark_image, position))
+                    image=img, wmark_resize=resize_w_size, wmark_img=watermark_image, wmark_pos=position)
                 return new_image
             except Exception as e:
                 print(traceback.format_exc())
@@ -199,7 +325,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                fill=hex_to_rgba(wtext_color, int(255 * opacity_text/100)), font=font)
                 text_img = convertImg(text_img, resize=(
                     int(img.width * 0.2) * w_size, int(text_img.height * w_size)), rotation=w_rotation)
-                img = convertImg(img, wmark=(text_img, position))
+                img = convertImg(img, wmark_img=text_img, wmark_pos=position)
                 return img
             except Exception as e:
                 print(traceback.format_exc())
@@ -213,6 +339,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 watermark=watermark,
                 w_rotation=w_rotation,
                 w_size=w_size,
+                resize_w_size=resize_w_size,
                 opacity_bg=opacity_bg,
                 position=position)
 
@@ -233,7 +360,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
         output = save_image(img, format, quality, width, height)
         return output
 
-    def process_zip(input_zip, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, text_watermark, text_watermark_color, font_path):
+    def process_zip(input_zip, format, quality, width, height, watermark, opacity_text, opacity_bg, position, w_rotation, w_size, resize_w_size, text_watermark, text_watermark_color, font_path):
         def ext_zip2mem(zip_file):
             try:
                 # Create an in-memory binary stream to hold the file's data
@@ -284,6 +411,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 position=position,
                                 w_rotation=w_rotation,
                                 w_size=w_size,
+                                resize_w_size=resize_w_size,
                                 text_watermark=text_watermark,
                                 text_watermark_color=text_watermark_color,
                                 font_path=font_path)
@@ -302,6 +430,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                                 position=position,
                                 w_rotation=w_rotation,
                                 w_size=w_size,
+                                resize_w_size=resize_w_size,
                                 text_watermark=text_watermark,
                                 text_watermark_color=text_watermark_color,
                                 font_path=font_path)
@@ -336,6 +465,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 position=position,
                 w_rotation=w_rotation,
                 w_size=w_size,
+                resize_w_size=resize_w_size,
                 text_watermark=text_watermark,
                 text_watermark_color=text_watermark_color,
                 font_path=font_path)
@@ -354,6 +484,7 @@ def process_input(input_file, format, quality, width, height, watermark, opacity
                 position=position,
                 w_rotation=w_rotation,
                 w_size=w_size,
+                resize_w_size=resize_w_size,
                 text_watermark=text_watermark,
                 text_watermark_color=text_watermark_color,
                 font_path=font_path)
@@ -396,6 +527,8 @@ def index():
         w_rotation = int(sanitize_input(request.form['watermark-rotation']))
         w_size = int(sanitize_input(
             request.form['watermark-size'])) if request.form['watermark-size'] else 50
+        resize_w_size = int(sanitize_input(
+            request.form['resize-watermark-size'])) if request.form['resize-watermark-size'] else 40
         # if watermarking type is text
         text_watermark = sanitize_input(
             request.form['text-watermark']) if request.form['text-watermark'] else ""
@@ -464,6 +597,7 @@ def index():
                             position=position,
                             w_rotation=w_rotation,
                             w_size=w_size,
+                            resize_w_size=resize_w_size,
                             text_watermark=text_watermark,
                             text_watermark_color=text_watermark_color,
                             font_path=font_path)
