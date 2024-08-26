@@ -17,8 +17,14 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY app /app
 
+# Copy the entrypoint script into the container
+COPY entrypoint.sh /entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /entrypoint.sh
+
 # Expose the port the app runs on
 EXPOSE ${GUNICORN_PORT}
 
-# Run the application
-CMD gunicorn -b ${GUNICORN_HOST}:${GUNICORN_PORT} -w ${GUNICORN_WORKERS} run:app
+# Use the entrypoint script to start Gunicorn
+ENTRYPOINT ["/entrypoint.sh"]
